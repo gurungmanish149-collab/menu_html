@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>キッチン注文ダッシュボード</title>
+  <style>
+    body {
+      background-color: #1a1a24;
+      color: #ffffff;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 30px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #333;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      background-color: #2e7d32;
+    }
+
+    .order-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .order-card {
+      background: #252533;
+      border-left: 6px solid #d32f2f;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      animation: popIn 0.3s ease-out;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #888;
+      border-bottom: 1px dashed #444;
+      padding-bottom: 8px;
+    }
+
+    .item-name {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 12px 0 6px;
+      color: #fff;
+    }
+
+    .item-size {
+      font-size: 16px;
+      color: #ffca28;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .item-price {
+      font-size: 15px;
+      color: #aaa;
+    }
+
+    .btn-done {
+      width: 100%;
+      margin-top: 16px;
+      padding: 10px;
+      background: #2e7d32;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-done:hover {
+      background: #1b5e20;
+    }
+
+    .empty-msg {
+      color: #666;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🍳 キッチン注文ダッシュボード</h1>
+    <div>
+      <span id="wsStatus" class="status-badge">接続中...</span>
+      <span id="orderCount" style="margin-left: 12px; font-size: 15px; color: #ccc;">未対応: 0件</span>
+    </div>
+  </header>
+
+  <div id="orderList" class="order-grid">
+    <p class="empty-msg" id="emptyMsg">未対応の注文はありません。</p>
+  </div>
+
+  <script>
+    const orderList = document.getElementById("orderList");
+    const emptyMsg = document.getElementById("emptyMsg");
+    const orderCountElem = document.getElementById("orderCount");
+    const wsStatus = document.getElementById("wsStatus");
+
+    let currentOrderCount = 0;
+
+    function updateCounter() {
+      orderCountElem.textContent = `未対応: ${currentOrderCount}件`;
+      emptyMsg.style.display = (currentOrderCount === 0) ? "block" : "none";
+    }
+
+    // 画面に注文カードを1件追加する
+    function renderOrderCard(order, prepend = true) {
+      emptyMsg.style.display = "none";
+
+      const card = document.createElement("div");
+      card.className = "order-card";
+      card.id = `order-${order.id}`;
+
+      card.innerHTML = `
+        <div class="card-header">
+          <span>注文 #${order.id}</span>
+          <span>${order.time}</span>
+        </div>
+        <div class="item-name">${order.name}</div>
+        <div class="item-size">サイズ: ${order.size}</div>
+        <div class="item-price">金額: ${order.price}</div>
+        <button class="btn-done" onclick="finishOrder(${order.id})">調理完了</button>
+      `;
+
+      if (prepend) {
+        orderList.prepend(card);
+      } else {
+        orderList.appendChild(card);
+      }
+    }
+
+    // 調理完了ボタンを押したときの処理
+    async function finishOrder(orderId) {
+      try {
+        await fetch(`http://127.0.0.1:8000/api/orders/${orderId}/complete`, {
+          method: "POST"
+        });
+
+        const card = document.getElementById(`order-${orderId}`);
+        if (card) {
+          card.remove();
+          currentOrderCount = Math.max(0, currentOrderCount - 1);
+          updateCounter();
+        }
+      } catch (err) {
+        console.error("完了処理エラー:", err);
+      }
+    }
+
+    // 画面を開いた時、DBにある既存の未対応注文を取得して表示
+    async function loadExistingOrders() {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/orders");
+        const orders = await res.json();
+        currentOrderCount = orders.length;
+        updateCounter();
+
+        orders.forEach(order => {
+          renderOrderCard(order, false);
+        });
+      } catch (err) {
+        console.error("初期データ取得失敗:", err);
+      }
+    }
+
+    // WebSocket 接続開始
+    function connectWebSocket() {
+      const socket = new WebSocket("ws://127.0.0.1:8000/ws/kitchen");
+
+      socket.onopen = () => {
+        wsStatus.textContent = "リアルタイム接続中";
+        wsStatus.style.backgroundColor = "#2e7d32";
+      };
+
+      socket.onmessage = (event) => {
+        // 客が確定ボタンを押した瞬間に届く
+        const newOrder = JSON.parse(event.data);
+        currentOrderCount++;
+        updateCounter();
+        renderOrderCard(newOrder, true);
+      };
+
+      socket.onclose = () => {
+        wsStatus.textContent = "切断中 (再接続試行...)";
+        wsStatus.style.backgroundColor = "#c62828";
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      socket.onerror = (err) => {
+        console.error("WebSocketエラー:", err);
+      };
+    }
+
+    // 起動時の初期化
+    loadExistingOrders();
+    connectWebSocket();
+  </script>
+</body>
+</html>

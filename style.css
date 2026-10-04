@@ -1,0 +1,194 @@
+body {
+  background-color: rgb(79, 62, 64);
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.headtag {
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+
+/* Slider Wrapper */
+.slider-wrapper {
+  position: relative;
+  width: 600px;
+  margin: 0 auto;
+}
+
+.slider {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  width: 100%;
+  scrollbar-width: none;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.slider::-webkit-scrollbar {
+  display: none;
+}
+
+.slide-item {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  cursor: pointer;
+}
+
+.slide-item img {
+  width: 100%;
+  height: 500px;
+  object-fit: cover;
+  display: block;
+}
+
+.food-info {
+  padding: 16px 20px;
+  text-align: left;
+}
+
+.food-info h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  color: #222;
+}
+
+.food-info .price {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #d32f2f;
+}
+
+.food-info .desc {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Slider Buttons (< and >) */
+.nav-btn {
+  position: absolute;
+  top: 250px;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: none;
+  font-size: 24px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.prev-btn { left: 15px; }
+.next-btn { right: 15px; }
+
+/* Modal / Popup Styles */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #ffffff;
+  padding: 24px;
+  width: 320px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  text-align: left;
+}
+
+.modal-content h3 { margin: 0 0 10px; font-size: 20px; }
+.modal-content #modalPrice { margin: 0 0 8px; font-size: 18px; font-weight: bold; color: #d32f2f; }
+.modal-content #modalDesc { margin: 0 0 20px; font-size: 14px; color: #555; }
+
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-close { background: #e0e0e0; color: #333; }
+.btn-close:hover { background: #d4d4d4; }
+.btn-next { background: #d32f2f; color: #fff; }
+.btn-next:hover { background: #b71c1c; }
+
+/* サイズ選択ラジオボタン */
+.size-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 10px;
+  font-size: 15px;
+  color: #333;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.radio-label input[type="radio"] {
+  cursor: pointer;
+  accent-color: #d32f2f;
+}
+
+/* 注文確認ボックス */
+.order-summary-box {
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+/* 確定ボタン */
+.btn-confirm {
+  background: #2e7d32;
+  color: #ffffff;
+}
+
+.btn-confirm:hover {
+  background: #1b5e20;
+}
