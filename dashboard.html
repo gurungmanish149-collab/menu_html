@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>注文管理ダッシュボード</title>
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+  <header class="dashboard-header">
+    <div class="brand">
+      <h1>📊 注文管理ダッシュボード</h1>
+      <span id="wsStatus" class="status-badge">接続中...</span>
+    </div>
+    <button class="btn btn-add" onclick="openCreateModal()">＋ 注文を追加</button>
+  </header>
+
+  <div class="table-container">
+    <table class="order-table">
+      <thead>
+        <tr>
+          <th>注文ID</th>
+          <th>時刻</th>
+          <th>商品名</th>
+          <th>サイズ</th>
+          <th>金額</th>
+          <th>ステータス</th>
+          <th style="text-align: center;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="dashboardTableBody">
+        <!-- Rendered by dashboard.js -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 編集・追加モーダル -->
+  <div class="modal-overlay" id="orderModal">
+    <div class="modal-content">
+      <h3 id="modalTitle">注文の変更</h3>
+      <input type="hidden" id="editOrderId">
+
+      <div class="form-group">
+        <label>商品名</label>
+        <input type="text" id="editItemName" placeholder="例: 寿司">
+      </div>
+
+      <div class="form-group">
+        <label>サイズ</label>
+        <select id="editItemSize">
+          <option value="S">S</option>
+          <option value="M">M</option>
+          <option value="L">L</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>金額</label>
+        <input type="text" id="editItemPrice" placeholder="例: 500円">
+      </div>
+
+      <div class="form-group" id="statusGroup">
+        <label>ステータス</label>
+        <select id="editItemStatus">
+          <option value="pending">pending (未対応)</option>
+          <option value="completed">completed (完了)</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
+        <button class="btn btn-save" onclick="saveOrder()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

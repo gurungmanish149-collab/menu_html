@@ -1,14 +1,13 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from datetime import datetime
+import json
+import sqlite3
+from typing import List, Optional
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from datetime import datetime
-from typing import List
-import sqlite3
-import json
 
 app = FastAPI()
 
-# CORS設定（ブラウザからの通信を許可）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,11 +16,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# データベース初期化
+DB_NAME = "restaurant.db"
+
+
+def get_db():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def init_db():
-    conn = sqlite3.connect("restaurant.db")
+    conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             item_name TEXT NOT NULL,
@@ -30,14 +38,18 @@ def init_db():
             created_at TEXT NOT NULL,
             status TEXT DEFAULT 'pending'
         )
-    """)
+    """
+    )
     conn.commit()
     conn.close()
 
+
 init_db()
 
-# --- WebSocket 接続マネージャー ---
+
+# --- WebSocket Manager ---
 class ConnectionManager:
+
     def __init__(self):
         self.active_connections: List[WebSocket] = []
 
@@ -46,80 +58,155 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
-    async def broadcast(self, message: str):
-        # 接続しているすべてのキッチン画面へメッセージを一斉送信
+    async def broadcast(self, message: dict):
         for connection in self.active_connections:
-            await connection.send_text(message)
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception:
+                pass
+
 
 manager = ConnectionManager()
 
-# リクエストボディ形式
+
+# --- Models ---
 class OrderCreate(BaseModel):
     name: str
     size: str
     price: str
 
-# 1. 客側からの注文受付 (POST)
+
+class OrderUpdate(BaseModel):
+    name: Optional[str] = None
+    size: Optional[str] = None
+    price: Optional[str] = None
+    status: Optional[str] = None
+
+
+# --- WebSocket Route ---
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+
+# --- API Routes ---
+
+
+# 1. 一覧取得 (All orders for Dashboard & Pending for Kitchen)
+@app.get("/api/orders")
+def get_orders(status: Optional[str] = None):
+    conn = get_db()
+    cursor = conn.cursor()
+    if status:
+        cursor.execute(
+            "SELECT * FROM orders WHERE status = ? ORDER BY id DESC", (status,)
+        )
+    else:
+        cursor.execute("SELECT * FROM orders ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": r["id"],
+            "name": r["item_name"],
+            "size": r["size"],
+            "price": r["price"],
+            "time": r["created_at"],
+            "status": r["status"],
+        }
+        for r in rows
+    ]
+
+
+# 2. 注文追加 (Customer or Manager)
 @app.post("/api/orders")
 async def create_order(order: OrderCreate):
-    conn = sqlite3.connect("restaurant.db")
+    conn = get_db()
     cursor = conn.cursor()
     now = datetime.now().strftime("%H:%M:%S")
-    
+
     cursor.execute(
-        "INSERT INTO orders (item_name, size, price, created_at) VALUES (?, ?, ?, ?)",
-        (order.name, order.size, order.price, now)
+        "INSERT INTO orders (item_name, size, price, created_at, status) VALUES (?, ?, ?, ?, 'pending')",
+        (order.name, order.size, order.price, now),
     )
     conn.commit()
     order_id = cursor.lastrowid
     conn.close()
 
-    new_order_data = {
+    new_order = {
         "id": order_id,
         "name": order.name,
         "size": order.size,
         "price": order.price,
-        "time": now
+        "time": now,
+        "status": "pending",
     }
 
-    # ★ 注文が入った瞬間、キッチン画面全員へリアルタイム配信！
-    await manager.broadcast(json.dumps(new_order_data))
+    # Broadcast to Kitchen & Dashboard
+    await manager.broadcast({"event": "order_created", "order": new_order})
+    return {"message": "Success", "order": new_order}
 
-    return {"message": "Success", "order": new_order_data}
 
-# 2. 未対応注文一覧の取得 (GET)
-@app.get("/api/orders")
-def get_orders():
-    conn = sqlite3.connect("restaurant.db")
+# 3. 注文変更 (Dashboard: 変更 / Kitchen: 完了)
+@app.put("/api/orders/{order_id}")
+async def update_order(order_id: int, update: OrderUpdate):
+    conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, item_name, size, price, created_at FROM orders WHERE status = 'pending' ORDER BY id DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    
-    return [
-        {"id": row[0], "name": row[1], "size": row[2], "price": row[3], "time": row[4]}
-        for row in rows
-    ]
+    cursor.execute("SELECT * FROM orders WHERE id = ?", (order_id,))
+    existing = cursor.fetchone()
 
-# 3. 調理完了ステータス更新 (POST)
-@app.post("/api/orders/{order_id}/complete")
-def complete_order(order_id: int):
-    conn = sqlite3.connect("restaurant.db")
-    cursor = conn.cursor()
-    cursor.execute("UPDATE orders SET status = 'completed' WHERE id = ?", (order_id,))
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    new_name = update.name if update.name is not None else existing["item_name"]
+    new_size = update.size if update.size is not None else existing["size"]
+    new_price = update.price if update.price is not None else existing["price"]
+    new_status = (
+        update.status if update.status is not None else existing["status"]
+    )
+
+    cursor.execute(
+        """
+        UPDATE orders 
+        SET item_name = ?, size = ?, price = ?, status = ? 
+        WHERE id = ?
+    """,
+        (new_name, new_size, new_price, new_status, order_id),
+    )
     conn.commit()
     conn.close()
-    return {"message": f"Order {order_id} marked as completed"}
 
-# 4. キッチン画面用 WebSocket エンドポイント
-@app.websocket("/ws/kitchen")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            # 接続を維持する
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+    updated_order = {
+        "id": order_id,
+        "name": new_name,
+        "size": new_size,
+        "price": new_price,
+        "time": existing["created_at"],
+        "status": new_status,
+    }
+
+    await manager.broadcast({"event": "order_updated", "order": updated_order})
+    return {"message": "Updated", "order": updated_order}
+
+
+# 4. 注文削除 (Dashboard: 削除)
+@app.delete("/api/orders/{order_id}")
+async def delete_order(order_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+    conn.commit()
+    conn.close()
+
+    await manager.broadcast({"event": "order_deleted", "order_id": order_id})
+    return {"message": "Deleted"}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Japanese Food Menu</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -14,7 +14,6 @@
     <button class="nav-btn prev-btn" onclick="slideLeft()">&#10094;</button>
 
     <div class="slider" id="slider">
-      <!-- 0: 寿司 -->
       <div class="slide-item" onclick="openModal(0)">
         <img src="images/sushi.jpeg" alt="寿司">
         <div class="food-info">
@@ -24,7 +23,6 @@
         </div>
       </div>
 
-      <!-- 1: ラーメン -->
       <div class="slide-item" onclick="openModal(1)">
         <img src="images/ramen.jpeg" alt="ラーメン">
         <div class="food-info">
@@ -34,7 +32,6 @@
         </div>
       </div>
 
-      <!-- 2: 餃子 -->
       <div class="slide-item" onclick="openModal(2)">
         <img src="images/gyouja.jpeg" alt="餃子">
         <div class="food-info">
@@ -44,7 +41,6 @@
         </div>
       </div>
 
-      <!-- 3: 牛丼 -->
       <div class="slide-item" onclick="openModal(3)">
         <img src="images/gyoudon.jpeg" alt="牛丼">
         <div class="food-info">
@@ -58,63 +54,47 @@
     <button class="nav-btn next-btn" onclick="slideRight()">&#10095;</button>
   </div>
 
-  <!-- 2. 注文モーダル全体 -->
+  <!-- 2. 注文モーダル -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-content">
-      
-      <!-- ① 商品詳細ステップ -->
       <div id="step-detail">
         <h3 id="modalName">商品名：寿司</h3>
-        
         <div class="size-selector">
           <label>サイズ：</label>
-          <label class="radio-label">
-            <input type="radio" name="foodSize" value="S" checked onchange="updatePriceBySize()"> S
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="foodSize" value="M" onchange="updatePriceBySize()"> M
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="foodSize" value="L" onchange="updatePriceBySize()"> L
-          </label>
+          <label class="radio-label"><input type="radio" name="foodSize" value="S" checked onchange="updatePriceBySize()"> S</label>
+          <label class="radio-label"><input type="radio" name="foodSize" value="M" onchange="updatePriceBySize()"> M</label>
+          <label class="radio-label"><input type="radio" name="foodSize" value="L" onchange="updatePriceBySize()"> L</label>
         </div>
-
         <p id="modalPrice">値段：500円</p>
         <p id="modalDesc">材料：サーモン、マグロ、エビ、酢飯</p>
-
         <div class="modal-buttons">
           <button class="btn btn-close" onclick="closeModal()">閉じる</button>
           <button class="btn btn-next" onclick="goToConfirmStep()">次へ</button>
         </div>
       </div>
 
-      <!-- ② 注文確認ステップ -->
       <div id="step-confirm" style="display: none;">
         <h3 style="margin-bottom: 16px;">ご注文の確認</h3>
         <p style="font-size: 15px; color: #444; margin-bottom: 12px;">こちらのご注文でよろしいですか？</p>
-        
         <div class="order-summary-box">
           <p id="confirmItemName" style="margin: 4px 0; font-weight: bold;"></p>
           <p id="confirmItemSize" style="margin: 4px 0; color: #555;"></p>
           <p id="confirmItemPrice" style="margin: 4px 0; color: #d32f2f; font-weight: bold;"></p>
         </div>
-
         <div class="modal-buttons" style="margin-top: 20px;">
           <button class="btn btn-close" onclick="backToDetailStep()">戻る</button>
           <button class="btn btn-confirm" onclick="confirmOrder()">確定</button>
         </div>
       </div>
 
-      <!-- ③ 注文完了ステップ -->
       <div id="step-thanks" style="display: none; text-align: center;">
         <h3 style="color: #2e7d32; margin-bottom: 14px;">ご注文ありがとうございます！</h3>
         <p style="color: #555; font-size: 14px; margin-bottom: 20px;">ただいま調理の準備をしております。</p>
         <button class="btn btn-close" style="width: 100%;" onclick="closeModal()">閉じる</button>
       </div>
-
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="js/menu.js"></script>
 </body>
 </html>
